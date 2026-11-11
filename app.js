@@ -110,7 +110,6 @@
     const qTokens = tokens(query);
     if (!qTokens.length) return;
 
-    updateUrl(query, mode);
     if (current) current.controller.abort();
     const controller = new AbortController();
     current = { controller };
@@ -173,7 +172,7 @@
     } catch (err) {
       if (err.name === "AbortError") return;
       if (err.status === 401) {
-        if (PROXY) setStatus(1, "Le service de recherche est momentanément indisponible.");
+        if (PROXY) setStatus(1, "Le relais n'a pas de clé TMDB valide (vérifiez le secret TMDB_API_KEY dans Cloudflare).");
         else { setStatus(1, "Clé API TMDB invalide ou manquante. Cliquez sur « ⚙ Clé API » pour la saisir."); openSettings(); }
       } else {
         setStatus(1, `Erreur pendant la recherche (${err.message || err}). Réessayez dans un instant.`);
@@ -356,14 +355,11 @@
   });
   els.more.addEventListener("click", () => { state.shown += PAGE_SIZE; render(); });
 
-  // ---------- Lien partageable (?q=…&m=…) ----------
-  function updateUrl(q, m) {
-    const u = new URL(location.href);
-    u.searchParams.set("q", q);
-    u.searchParams.set("m", m);
-    history.replaceState(null, "", u);
-  }
+  // Lien partageable (?q=…&m=…) : la recherche est lancée puis retirée de l'adresse,
+  // pour qu'aucun nom ne reste dans la barre d'adresse ni ne soit prérempli au rechargement.
   const params = new URLSearchParams(location.search);
+  if (params.has("q") || params.has("m")) history.replaceState(null, "", location.pathname);
   if (params.get("m") && [...els.match.options].some((o) => o.value === params.get("m"))) els.match.value = params.get("m");
-  if (params.get("q")) { els.q.value = params.get("q"); run(); }
+  if (params.get("q")) { els.q.value = params.get("q").slice(0, 80); run(); }
+  else els.q.value = "";
 })();

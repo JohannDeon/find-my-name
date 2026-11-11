@@ -27,18 +27,27 @@ export default {
     const url = new URL(request.url);
     if (!ALLOWED_PATHS.some((re) => re.test(url.pathname))) return new Response("Not found", { status: 404, headers: cors });
 
+    const key = String(env.TMDB_API_KEY || "").trim();
+    if (!key) {
+      return new Response(JSON.stringify({ error: "TMDB_API_KEY manquant dans les variables du worker" }),
+        { status: 401, headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
     const target = new URL("https://api.themoviedb.org/3" + url.pathname);
     for (const k of ALLOWED_PARAMS) {
       const v = url.searchParams.get(k);
       if (v !== null) target.searchParams.set(k, v.slice(0, 100));
     }
-    target.searchParams.set("api_key", env.TMDB_API_KEY);
+    // Accepte la clé v3 (courte) comme le jeton v4 (commence par « eyJ »).
+    const upstreamHeaders = { accept: "application/json" };
+    if (key.startsWith("eyJ")) upstreamHeaders.Authorization = "Bearer " + key;
+    else target.searchParams.set("api_key", key);
 
     const cache = caches.default;
     const cacheKey = new Request(target.toString().replace(/api_key=[^&]+/, ""), { method: "GET" });
     let res = await cache.match(cacheKey);
     if (!res) {
-      const upstream = await fetch(target, { headers: { accept: "application/json" } });
+      const upstream = await fetch(target, { headers: upstreamHeaders });
       res = new Response(upstream.body, {
         status: upstream.status,
         headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=3600" },
