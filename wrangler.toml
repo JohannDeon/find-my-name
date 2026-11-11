@@ -1,0 +1,9 @@
+# Configuration du relais Cloudflare (déployé automatiquement par Workers Builds).
+name = "find-my-name"
+main = "worker/tmdb-proxy.js"
+compatibility_date = "2025-09-01"
+# Conserve les variables définies dans le tableau de bord Cloudflare.
+keep_vars = true
+
+[vars]
+ALLOWED_ORIGIN = "https://johanndeon.github.io"
