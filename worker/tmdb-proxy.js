@@ -4,7 +4,11 @@
 //   TMDB_API_KEY   (type « Secret ») : votre clé API v3 TMDB
 //   ALLOWED_ORIGIN (type « Text »)   : https://johanndeon.github.io
 
-const ALLOWED_PATHS = [/^\/search\/person$/, /^\/person\/\d{1,10}\/combined_credits$/];
+const ALLOWED_PATHS = [
+  /^\/search\/person$/,
+  /^\/person\/\d{1,10}\/combined_credits$/,
+  /^\/(movie|tv)\/\d{1,10}$/, // détails d'un titre (pays d'origine)
+];
 const ALLOWED_PARAMS = ["query", "page", "language", "include_adult"];
 
 export default {

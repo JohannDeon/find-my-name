@@ -18,7 +18,7 @@
     status: $("status"), bar: $("bar"), statusText: $("status-text"),
     people: $("people"), peopleTitle: $("people-title"), peopleList: $("people-list"),
     results: $("results"), resultsTitle: $("results-title"), list: $("list"), more: $("more"),
-    sort: $("sort"), type: $("type"), role: $("role"), filter: $("filter"), intro: $("intro"),
+    sort: $("sort"), type: $("type"), country: $("country"), role: $("role"), filter: $("filter"), intro: $("intro"),
   };
 
   // ---------- Clé API ----------
@@ -168,7 +168,9 @@
       };
       els.status.hidden = true;
       renderPeople();
+      renderCountries();
       render();
+      fillCountries(signal); // en arrière-plan
     } catch (err) {
       if (err.name === "AbortError") return;
       if (err.status === 401) {
@@ -198,6 +200,7 @@
         votes: c.vote_count || 0,
         poster: c.poster_path,
         genres: c.genre_ids || [],
+        countries: Array.isArray(c.origin_country) && c.origin_country.length ? c.origin_country.slice() : null,
         credits: [],
         kinds: new Set(),
         personIds: new Set(),
@@ -223,11 +226,105 @@
     els.statusText.textContent = text;
   }
 
+  // ---------- Pays ----------
+  const regionNames = (() => { try { return new Intl.DisplayNames(["fr"], { type: "region" }); } catch { return null; } })();
+  const countryName = (code) => { try { return (regionNames && regionNames.of(code)) || code; } catch { return code; } };
+  const countryCache = new Map();
+  let countryProgress = null; // { done, total } pendant le chargement
+
+  async function fillCountries(signal) {
+    const todo = state.titles.filter((t) => !t.countries);
+    for (const t of todo) if (countryCache.has(t.key)) t.countries = countryCache.get(t.key);
+    const missing = todo.filter((t) => !t.countries);
+    if (!missing.length) { countryProgress = null; renderCountries(); return; }
+    countryProgress = { done: 0, total: missing.length };
+    renderCountries();
+    let timer = null;
+    const refresh = () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        renderCountries();
+        if (els.country.value !== "all" || els.sort.value === "country") render(); else updateCards();
+      }, 400);
+    };
+    try {
+      await pool(missing, async (t) => {
+        try {
+          const d = await tmdb(`/${t.type}/${t.id}`, { language: LANG }, signal);
+          const list = (d.origin_country && d.origin_country.length ? d.origin_country
+            : (d.production_countries || []).map((x) => x.iso_3166_1)).filter(Boolean);
+          t.countries = list;
+        } catch (err) {
+          if (err.name === "AbortError") throw err;
+          t.countries = [];
+        }
+        countryCache.set(t.key, t.countries);
+      }, CONCURRENCY, () => { countryProgress.done++; refresh(); });
+    } catch (err) {
+      if (err.name === "AbortError") return;
+    }
+    countryProgress = null;
+    clearTimeout(timer);
+    renderCountries();
+    render();
+  }
+
+  function renderCountries() {
+    const counts = new Map();
+    let unknown = 0;
+    for (const t of state.titles) {
+      if (!t.countries || !t.countries.length) { unknown++; continue; }
+      for (const c of t.countries) counts.set(c, (counts.get(c) || 0) + 1);
+    }
+    const prev = els.country.value;
+    const opts = [...counts.entries()]
+      .map(([code, n]) => ({ code, n, name: countryName(code) }))
+      .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+    const frag = document.createDocumentFragment();
+    const all = el("option", null, countryProgress
+      ? `Tous les pays (chargement ${countryProgress.done}/${countryProgress.total}…)`
+      : "Tous les pays");
+    all.value = "all";
+    frag.appendChild(all);
+    for (const o of opts) {
+      const op = el("option", null, `${o.name} (${o.n})`);
+      op.value = o.code;
+      frag.appendChild(op);
+    }
+    if (unknown && !countryProgress) {
+      const op = el("option", null, `Pays inconnu (${unknown})`);
+      op.value = "unknown";
+      frag.appendChild(op);
+    }
+    els.country.replaceChildren(frag);
+    els.country.value = [...els.country.options].some((o) => o.value === prev) ? prev : "all";
+  }
+
+  function countryLabel(t) {
+    if (!t.countries) return "";
+    if (!t.countries.length) return "";
+    return t.countries.slice(0, 3).map(countryName).join(", ");
+  }
+
+  // Met à jour les pays affichés sur les cartes sans tout redessiner.
+  function updateCards() {
+    for (const li of els.list.children) {
+      const t = li._title;
+      if (!t) continue;
+      const span = li.querySelector(".country");
+      if (span) span.textContent = countryLabel(t) ? "📍 " + countryLabel(t) : "";
+    }
+  }
+
   function filtered() {
     const type = els.type.value, role = els.role.value, f = norm(els.filter.value.trim());
+    const country = els.country.value;
     const pf = state.personFilter;
     return state.titles.filter((t) => {
       if (type !== "all" && t.type !== type) return false;
+      if (country === "unknown" && t.countries && t.countries.length) return false;
+      if (country !== "all" && country !== "unknown" && !(t.countries && t.countries.includes(country))) return false;
       if (pf && !t.personIds.has(pf)) return false;
       if (role !== "all") {
         const ok = t.credits.some((c) => c.kind === role && (!pf || c.personId === pf));
@@ -249,6 +346,11 @@
     votes: (a, b) => b.votes - a.votes,
     title: (a, b) => a.title.localeCompare(b.title, "fr", { sensitivity: "base" }),
     person: (a, b) => (b.personPop - a.personPop) || (b.popularity - a.popularity),
+    country: (a, b) => {
+      const ca = a.countries && a.countries.length ? countryName(a.countries[0]) : "\uffff";
+      const cb = b.countries && b.countries.length ? countryName(b.countries[0]) : "\uffff";
+      return ca.localeCompare(cb, "fr") || (b.popularity - a.popularity);
+    },
   };
 
   function render() {
@@ -280,6 +382,7 @@
 
   function card(t) {
     const li = el("li", "item");
+    li._title = t;
     const url = `https://www.themoviedb.org/${t.type}/${t.id}?language=fr-FR`;
 
     const a = el("a", "poster");
@@ -303,6 +406,7 @@
     meta.appendChild(el("span", "badge " + t.type, t.type === "tv" ? "Série" : "Film"));
     if (t.votes) meta.appendChild(el("span", null, `★ ${t.rating.toFixed(1)} (${t.votes.toLocaleString("fr-FR")} votes)`));
     meta.appendChild(el("span", null, `Popularité ${Math.round(t.popularity * 10) / 10}`));
+    meta.appendChild(el("span", "country", countryLabel(t) ? "📍 " + countryLabel(t) : ""));
     body.appendChild(meta);
 
     const who = el("ul", "who");
@@ -347,7 +451,7 @@
     els.peopleList.replaceChildren(frag);
   }
 
-  for (const c of [els.sort, els.type, els.role]) c.addEventListener("change", () => { state.shown = PAGE_SIZE; render(); });
+  for (const c of [els.sort, els.type, els.role, els.country]) c.addEventListener("change", () => { state.shown = PAGE_SIZE; render(); });
   let filterTimer;
   els.filter.addEventListener("input", () => {
     clearTimeout(filterTimer);

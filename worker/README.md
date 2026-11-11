@@ -12,4 +12,4 @@ Ce relais garde la clé TMDB secrète : elle n'apparaît plus dans le code du si
    `window.TMDB_PROXY_URL = "https://find-my-name.<vous>.workers.dev";`
    et videz `window.TMDB_API_KEY`.
 
-Le relais n'accepte que deux types de requêtes (recherche de personnes et filmographie), uniquement en lecture et uniquement depuis votre site.
+Le relais n'accepte que les requêtes du site (recherche de personnes, filmographie, détails d'un titre), uniquement en lecture et uniquement depuis votre site.
