@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: https://image.tmdb.org https://www.themoviedb.org; connect-src https://api.themoviedb.org https://*.workers.dev; base-uri 'none'; form-action 'self'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
   <title>Find My Name · génériques de films et séries</title>
   <meta name="description" content="Entrez un prénom ou un nom et découvrez dans quels films et séries il apparaît au générique.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
@@ -14,7 +16,7 @@
     <p class="tagline">Votre prénom ou votre nom apparaît-il au générique d'un film ou d'une série&nbsp;?</p>
 
     <form id="search-form" class="search" autocomplete="off">
-      <input id="q" type="search" placeholder="Ex. : Johann, Deon, Marie…" required aria-label="Prénom ou nom">
+      <input id="q" type="search" maxlength="80" placeholder="Ex. : Johann, Deon, Marie…" required aria-label="Prénom ou nom">
       <button type="submit" id="go">Chercher</button>
     </form>
 

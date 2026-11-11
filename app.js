@@ -7,6 +7,8 @@
   const PAGE_SIZE = 60;
   const CONCURRENCY = 6;
   const KEY_STORAGE = "fmn_tmdb_key";
+  // Relais optionnel qui garde la clé secrète côté serveur (voir worker/README.md).
+  const PROXY = String(window.TMDB_PROXY_URL || "").replace(/\/+$/, "");
 
   const $ = (id) => document.getElementById(id);
   const els = {
@@ -30,6 +32,7 @@
     els.settings.showModal();
     els.apiKey.focus();
   }
+  if (PROXY) els.settingsBtn.hidden = true;
   els.settingsBtn.addEventListener("click", openSettings);
   els.settingsCancel.addEventListener("click", () => els.settings.close());
   els.settingsSave.addEventListener("click", () => {
@@ -41,16 +44,18 @@
   class ApiError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
 
   async function tmdb(path, params = {}, signal) {
-    const key = getKey();
-    if (!key) throw new ApiError(401, "missing key");
-    const url = new URL(API + path);
+    const url = new URL((PROXY || API) + path);
     const headers = { accept: "application/json" };
-    if (key.startsWith("eyJ")) headers.Authorization = "Bearer " + key; // jeton v4
-    else url.searchParams.set("api_key", key);                         // clé v3
+    if (!PROXY) {
+      const key = getKey();
+      if (!key) throw new ApiError(401, "missing key");
+      if (key.startsWith("eyJ")) headers.Authorization = "Bearer " + key; // jeton v4
+      else url.searchParams.set("api_key", key);                         // clé v3
+    }
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
 
     for (let attempt = 0; ; attempt++) {
-      const res = await fetch(url, { headers, signal });
+      const res = await fetch(url, { headers, signal, credentials: "omit", referrerPolicy: "no-referrer" });
       if (res.status === 429 && attempt < 4) { await sleep(800 * (attempt + 1)); continue; }
       if (!res.ok) throw new ApiError(res.status, res.statusText);
       return res.json();
@@ -96,9 +101,9 @@
   els.form.addEventListener("submit", (e) => { e.preventDefault(); run(); });
 
   async function run() {
-    const query = els.q.value.trim();
+    const query = els.q.value.trim().slice(0, 80);
     if (!query) return;
-    if (!getKey()) { openSettings(); return; }
+    if (!PROXY && !getKey()) { openSettings(); return; }
 
     const mode = els.match.value;
     const maxPeople = +els.maxPeople.value;
@@ -168,8 +173,8 @@
     } catch (err) {
       if (err.name === "AbortError") return;
       if (err.status === 401) {
-        setStatus(1, "Clé API TMDB invalide ou manquante. Cliquez sur « ⚙ Clé API » pour la saisir.");
-        openSettings();
+        if (PROXY) setStatus(1, "Le service de recherche est momentanément indisponible.");
+        else { setStatus(1, "Clé API TMDB invalide ou manquante. Cliquez sur « ⚙ Clé API » pour la saisir."); openSettings(); }
       } else {
         setStatus(1, `Erreur pendant la recherche (${err.message || err}). Réessayez dans un instant.`);
       }
