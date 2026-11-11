@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Find My Name · génériques de films et séries</title>
+  <meta name="description" content="Entrez un prénom ou un nom et découvrez dans quels films et séries il apparaît au générique.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <h1>Find My Name</h1>
+    <p class="tagline">Votre prénom ou votre nom apparaît-il au générique d'un film ou d'une série&nbsp;?</p>
+
+    <form id="search-form" class="search" autocomplete="off">
+      <input id="q" type="search" placeholder="Ex. : Johann, Deon, Marie…" required aria-label="Prénom ou nom">
+      <button type="submit" id="go">Chercher</button>
+    </form>
+
+    <div class="options">
+      <label>Chercher comme
+        <select id="match">
+          <option value="first">Prénom</option>
+          <option value="last">Nom de famille</option>
+          <option value="any" selected>Prénom ou nom</option>
+          <option value="full">Nom complet exact</option>
+        </select>
+      </label>
+      <label>Personnes analysées (max)
+        <select id="max-people">
+          <option value="40">40 (rapide)</option>
+          <option value="100" selected>100</option>
+          <option value="250">250</option>
+          <option value="500">500 (lent)</option>
+        </select>
+      </label>
+      <button type="button" id="settings-btn" class="link">⚙ Clé API</button>
+    </div>
+  </header>
+
+  <dialog id="settings">
+    <form method="dialog" id="settings-form">
+      <h2>Clé API TMDB</h2>
+      <p>Le site utilise la base de données gratuite <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">The Movie Database (TMDB)</a>.
+        Créez un compte, puis copiez votre <strong>clé API (v3)</strong> ou votre <strong>jeton d'accès en lecture (v4)</strong> depuis
+        <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org/settings/api</a>.</p>
+      <input id="api-key" type="text" placeholder="Collez votre clé ici" spellcheck="false">
+      <p class="hint">Elle est enregistrée uniquement dans ce navigateur.</p>
+      <menu>
+        <button value="cancel" type="button" id="settings-cancel" class="link">Annuler</button>
+        <button value="ok" id="settings-save">Enregistrer</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <main>
+    <section id="status" class="status" hidden>
+      <div class="progress"><div id="bar"></div></div>
+      <p id="status-text"></p>
+    </section>
+
+    <section id="people" hidden>
+      <h2 id="people-title"></h2>
+      <div id="people-list" class="chips"></div>
+    </section>
+
+    <section id="results" hidden>
+      <div class="toolbar">
+        <h2 id="results-title"></h2>
+        <div class="controls">
+          <label>Trier par
+            <select id="sort">
+              <option value="popularity">Popularité</option>
+              <option value="date_desc">Date (récent d'abord)</option>
+              <option value="date_asc">Date (ancien d'abord)</option>
+              <option value="rating">Note moyenne</option>
+              <option value="votes">Nombre de votes</option>
+              <option value="title">Titre (A → Z)</option>
+              <option value="person">Popularité de la personne</option>
+            </select>
+          </label>
+          <label>Type
+            <select id="type">
+              <option value="all">Films et séries</option>
+              <option value="movie">Films</option>
+              <option value="tv">Séries</option>
+            </select>
+          </label>
+          <label>Rôle
+            <select id="role">
+              <option value="all">Tous</option>
+              <option value="cast">Acteurs / actrices</option>
+              <option value="crew">Équipe technique</option>
+            </select>
+          </label>
+          <label>Filtrer
+            <input id="filter" type="search" placeholder="Titre ou personne…">
+          </label>
+        </div>
+      </div>
+      <ol id="list" class="list"></ol>
+      <button id="more" class="more" hidden>Afficher plus</button>
+    </section>
+
+    <section id="intro" class="intro">
+      <h2>Comment ça marche&nbsp;?</h2>
+      <ol>
+        <li>Tapez un prénom ou un nom de famille.</li>
+        <li>Le site cherche toutes les personnes portant ce nom dans la base TMDB (acteurs, réalisateurs, techniciens…).</li>
+        <li>Il récupère leur filmographie complète et affiche tous les films et séries où ce nom apparaît au générique.</li>
+        <li>Triez par popularité, date, note, et filtrez par type ou par rôle.</li>
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg" alt="TMDB" height="12">
+    <span>Ce site utilise l'API TMDB mais n'est ni approuvé ni certifié par TMDB.</span>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
