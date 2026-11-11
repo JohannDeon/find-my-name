@@ -1,6 +1,6 @@
 // Option recommandée : un relais qui garde la clé secrète (voir worker/README.md).
 // Si cette adresse est renseignée, la clé ci-dessous n'est plus utilisée et peut être vidée.
-window.TMDB_PROXY_URL = "";
+window.TMDB_PROXY_URL = "https://find-my-name.jodeon22.workers.dev";
 
 // Sinon, clé TMDB v3 utilisée directement par le navigateur.
 // Attention : sur GitHub Pages, ce fichier est public, donc la clé est visible par tous.
